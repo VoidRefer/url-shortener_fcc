@@ -23,6 +23,7 @@ app.get('/api/hello', function(req, res) {
 });
 
 // Middleware
+app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }))
 
 // Database
@@ -31,10 +32,14 @@ let idCounter = 1;
 
 // Helper function for validating urls
 function validateUrl(url, callback) {
+  console.log("Validating URL:", url);
   try {
     const urlObject = new URL(url);
     dns.lookup(urlObject.hostname, (err) => {
-      if (err) console.log(err);
+      if (err) {
+        console.log("DNS lookup error:", err);
+        return callback(false);
+      }
       callback(true);
     });
   } catch {
@@ -45,6 +50,11 @@ function validateUrl(url, callback) {
 // POST /api/shorturl
 app.post("/api/shorturl", (req, res) => {
   const originalUrl = req.body.url;
+
+  // Check if url present in request body
+  if (!originalUrl) {
+    return res.json({ error: 'invalid url' });
+  }
 
   // Validate url
   validateUrl(originalUrl, (isValid) => {
@@ -75,14 +85,13 @@ app.post("/api/shorturl", (req, res) => {
 })
 
 // GET /api/shorturl/<short_url>
-
 app.get("/api/shorturl/:short_url", (req, res) => {
   const shortUrl = parseInt(req.params.short_url);
 
   // Find the original url
   const entry = urlDatabase.find(entry => entry.short_url === shortUrl);
   if (!entry){
-    return res.status(404).json({ error: "An error occurred"});
+    return res.json({ error: 'invalid url'});
   }
 
   // Redirerect to original url
